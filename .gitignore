@@ -1,0 +1,8 @@
+# Run this before git add .
+echo "config.yaml
+jobbot.db
+logs/
+assets/
+__pycache__/
+*.pyc
+.env" > .gitignore
