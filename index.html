@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Job AI Agent — Dashboard</title>
+<style>
+  :root {
+    --bg: #0f172a; --surface: #1e293b; --surface2: #263248;
+    --accent: #3b82f6; --accent2: #e94560; --green: #22c55e;
+    --yellow: #f59e0b; --red: #ef4444; --text: #e2e8f0;
+    --muted: #94a3b8; --border: #334155;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+  .header h1 { font-size: 18px; font-weight: 700; color: var(--accent); }
+  .header .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: opacity 0.15s; }
+  .btn:hover { opacity: 0.85; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-danger { background: var(--accent2); color: white; }
+  .btn-success { background: var(--green); color: #0f172a; }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .layout { display: grid; grid-template-columns: 240px 1fr; min-height: calc(100vh - 57px); }
+  .sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 16px; }
+  .nav-item { padding: 10px 14px; border-radius: 8px; cursor: pointer; font-size: 14px; color: var(--muted); margin-bottom: 4px; transition: all 0.15s; display: flex; align-items: center; gap: 8px; }
+  .nav-item:hover, .nav-item.active { background: var(--surface2); color: var(--text); }
+  .nav-item .icon { font-size: 16px; }
+  .main { padding: 24px; overflow-y: auto; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .stat-card .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .stat-card .value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .section-header h2 { font-size: 16px; font-weight: 600; }
+  .job-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .job-table th { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; }
+  .job-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .job-table tr:hover td { background: var(--surface2); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .badge-green { background: rgba(34,197,94,0.15); color: var(--green); }
+  .badge-yellow { background: rgba(245,158,11,0.15); color: var(--yellow); }
+  .badge-red { background: rgba(239,68,68,0.15); color: var(--red); }
+  .badge-blue { background: rgba(59,130,246,0.15); color: var(--accent); }
+  .badge-gray { background: rgba(148,163,184,0.1); color: var(--muted); }
+  .filters { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .filter-btn { padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; }
+  .filter-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(59,130,246,0.1); }
+  .task-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  textarea, input[type="text"] { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; color: var(--text); font-size: 13px; resize: vertical; }
+  textarea:focus, input:focus { outline: none; border-color: var(--accent); }
+  .result-box { background: var(--surface2); border-radius: 8px; padding: 12px; font-size: 13px; line-height: 1.6; white-space: pre-wrap; margin-top: 12px; max-height: 300px; overflow-y: auto; }
+  .inbox-item { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 10px; }
+  .inbox-item .meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .loading { color: var(--muted); font-size: 13px; text-align: center; padding: 24px; }
+  .alert { padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; }
+  .alert-info { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); color: #93c5fd; }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; }
+  .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+  .modal .close-btn { float: right; background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>🤖 Job AI Agent</h1>
+    <div class="sub">Autonomous Job Hunting Assistant for Jasper John C. Paitan</div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-primary" onclick="triggerScrape()">🔍 Scrape Jobs</button>
+    <button class="btn btn-success" onclick="scanInbox()">📧 Scan Inbox</button>
+  </div>
+</div>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="nav-item active" onclick="showPage('dashboard', this)"><span class="icon">📊</span> Dashboard</div>
+    <div class="nav-item" onclick="showPage('jobs', this)"><span class="icon">💼</span> Job Listings</div>
+    <div class="nav-item" onclick="showPage('apply', this)"><span class="icon">📤</span> Auto-Apply Queue</div>
+    <div class="nav-item" onclick="showPage('inbox', this)"><span class="icon">📬</span> Inbox Responses</div>
+    <div class="nav-item" onclick="showPage('worker', this)"><span class="icon">🤖</span> Worker Agent</div>
+    <div class="nav-item" onclick="showPage('manual', this)"><span class="icon">✍️</span> Add Job Manually</div>
+  </div>
+
+  <!-- Main content -->
+  <div class="main">
+
+    <!-- Dashboard -->
+    <div id="page-dashboard" class="page active">
+      <div class="stats-grid" id="stats-grid">
+        <div class="loading">Loading stats...</div>
+      </div>
+      <div class="alert alert-info">
+        💡 Run <strong>Scrape Jobs</strong> to find new listings, then check the <strong>Auto-Apply Queue</strong> to review jobs the AI wants to apply to.
+      </div>
+    </div>
+
+    <!-- Job Listings -->
+    <div id="page-jobs" class="page">
+      <div class="section-header">
+        <h2>All Job Listings</h2>
+        <span id="job-count" style="color:var(--muted);font-size:13px"></span>
+      </div>
+      <div class="filters">
+        <button class="filter-btn active" onclick="filterJobs('all', this)">All</button>
+        <button class="filter-btn" onclick="filterJobs('AUTO_APPLY', this)">Auto-Apply</button>
+        <button class="filter-btn" onclick="filterJobs('ASK_USER', this)">Needs Review</button>
+        <button class="filter-btn" onclick="filterJobs('applied', this)">Applied</button>
+        <button class="filter-btn" onclick="filterJobs('REJECT', this)">Rejected / Scam</button>
+      </div>
+      <table class="job-table">
+        <thead>
+          <tr>
+            <th>Title</th><th>Company</th><th>Platform</th>
+            <th>Score</th><th>Scam?</th><th>Decision</th><th>Status</th><th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="jobs-body">
+          <tr><td colspan="8" class="loading">Loading jobs...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Auto-Apply Queue -->
+    <div id="page-apply" class="page">
+      <div class="section-header">
+        <h2>Auto-Apply Queue</h2>
+        <button class="btn btn-primary" onclick="runAutoApply()">🚀 Run Auto-Apply</button>
+      </div>
+      <div class="alert alert-info">⚠️ Review these jobs before running auto-apply. Only jobs with <strong>AUTO_APPLY</strong> decision and a found email will be sent.</div>
+      <table class="job-table">
+        <thead>
+          <tr><th>Title</th><th>Company</th><th>Apply Email</th><th>Score</th><th>AI Reason</th><th>Action</th></tr>
+        </thead>
+        <tbody id="apply-body">
+          <tr><td colspan="6" class="loading">Loading queue...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Inbox -->
+    <div id="page-inbox" class="page">
+      <div class="section-header">
+        <h2>Email Responses</h2>
+        <button class="btn btn-primary" onclick="scanInbox()">🔄 Scan Now</button>
+      </div>
+      <div id="inbox-list"><div class="loading">Loading responses...</div></div>
+    </div>
+
+    <!-- Worker Agent -->
+    <div id="page-worker" class="page">
+      <div class="section-header"><h2>🤖 Worker Agent — Delegate a Task</h2></div>
+      <div class="task-box">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px">
+          Describe what you want the AI to do for you. Examples:
+          "Write a follow-up email to CargoBoss — I applied 5 days ago and haven't heard back."
+          "Summarize this job description: [paste it]"
+        </p>
+        <textarea id="task-input" rows="4" placeholder="Describe your task here..."></textarea>
+        <textarea id="task-context" rows="3" style="margin-top:8px" placeholder="Optional: paste any reference text (email, job post, etc.)"></textarea>
+        <button class="btn btn-primary" style="margin-top:12px" onclick="runTask()">▶ Run Task</button>
+        <div id="task-result"></div>
+      </div>
+    </div>
+
+    <!-- Manual Add -->
+    <div id="page-manual" class="page">
+      <div class="section-header"><h2>Add a Job Manually</h2></div>
+      <div class="task-box">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Found a job post yourself? Add it here and the AI will evaluate it.</p>
+        <input type="text" id="m-title" placeholder="Job title *" style="margin-bottom:8px">
+        <input type="text" id="m-company" placeholder="Company name *" style="margin-bottom:8px">
+        <input type="text" id="m-platform" placeholder="Platform (e.g. Facebook, LinkedIn)" style="margin-bottom:8px">
+        <input type="text" id="m-email" placeholder="Apply email (if shown in post)" style="margin-bottom:8px">
+        <input type="text" id="m-url" placeholder="Job post URL" style="margin-bottom:8px">
+        <textarea id="m-desc" rows="5" placeholder="Paste the full job description here *"></textarea>
+        <button class="btn btn-primary" style="margin-top:12px" onclick="addManualJob()">➕ Add & Evaluate</button>
+        <div id="manual-result"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Job Detail Modal -->
+<div class="modal-overlay" id="job-modal">
+  <div class="modal">
+    <button class="close-btn" onclick="closeModal()">×</button>
+    <h3 id="modal-title">Job Detail</h3>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+const API = "http://127.0.0.1:8000";
+let allJobs = [];
+let currentFilter = "all";
+
+function showPage(name, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  el.classList.add('active');
+  if (name === 'dashboard') loadStats();
+  if (name === 'jobs') loadJobs();
+  if (name === 'apply') loadApplyQueue();
+  if (name === 'inbox') loadInbox();
+}
+
+// ── Stats ─────────────────────────────────────────────────
+async function loadStats() {
+  const r = await fetch(API + '/api/stats');
+  const s = await r.json();
+  const colors = { total_found:'var(--accent)', applied:'var(--green)', scams_caught:'var(--red)', needs_review:'var(--yellow)', interviews:'var(--green)', responses:'var(--accent)' };
+  const labels = { total_found:'Jobs Found', applied:'Applied', scams_caught:'Scams Caught', auto_eligible:'Auto-Eligible', needs_review:'Needs Review', pending:'Pending Eval', responses:'Responses', interviews:'Interviews 🎉' };
+  document.getElementById('stats-grid').innerHTML = Object.entries(s).map(([k, v]) =>
+    `<div class="stat-card"><div class="label">${labels[k]||k}</div><div class="value" style="color:${colors[k]||'var(--text)'}">${v}</div></div>`
+  ).join('');
+}
+
+// ── Jobs ─────────────────────────────────────────────────
+async function loadJobs() {
+  const r = await fetch(API + '/api/jobs?limit=200');
+  allJobs = await r.json();
+  renderJobs(allJobs);
+}
+
+function filterJobs(filter, el) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  const filtered = filter === 'all' ? allJobs :
+    allJobs.filter(j => j.ai_decision === filter || j.status === filter);
+  renderJobs(filtered);
+}
+
+function renderJobs(jobs) {
+  document.getElementById('job-count').textContent = jobs.length + ' jobs';
+  const decBadge = { AUTO_APPLY:'green', ASK_USER:'yellow', REJECT:'red', IGNORE:'gray' };
+  document.getElementById('jobs-body').innerHTML = jobs.map(j => `
+    <tr>
+      <td><a href="${j.url||'#'}" target="_blank" style="color:var(--accent)">${j.title}</a></td>
+      <td>${j.company}</td>
+      <td><span class="badge badge-gray">${j.platform}</span></td>
+      <td style="font-weight:600;color:${j.ai_score>=78?'var(--green)':j.ai_score>=50?'var(--yellow)':'var(--red)'}">${j.ai_score||0}</span></td>
+      <td>${j.ai_scam==='yes'?'<span class="badge badge-red">⚠ SCAM</span>':j.ai_scam==='suspicious'?'<span class="badge badge-yellow">⚠ Check</span>':'<span class="badge badge-green">Clean</span>'}</td>
+      <td><span class="badge badge-${decBadge[j.ai_decision]||'gray'}">${j.ai_decision||'PENDING'}</span></td>
+      <td><span class="badge badge-${j.status==='applied'?'green':'gray'}">${j.status}</span></td>
+      <td style="display:flex;gap:4px;flex-wrap:wrap">
+        ${j.apply_email && j.status!=='applied' ? `<button class="btn btn-success btn-sm" onclick="applyJob(${j.id})">Apply</button>` : ''}
+        <button class="btn btn-sm" style="background:var(--surface2)" onclick="showJobDetail(${j.id})">View</button>
+        ${j.status!=='applied' ? `<button class="btn btn-sm" style="background:rgba(239,68,68,0.2);color:var(--red)" onclick="rejectJob(${j.id})">Skip</button>` : ''}
+      </td>
+    </tr>
+  `).join('') || '<tr><td colspan="8" class="loading">No jobs found.</td></tr>';
+}
+
+// ── Apply Queue ───────────────────────────────────────────
+async function loadApplyQueue() {
+  const r = await fetch(API + '/api/jobs?limit=200');
+  const jobs = await r.json();
+  const queue = jobs.filter(j => j.ai_decision === 'AUTO_APPLY' && j.apply_email && j.status !== 'applied');
+  document.getElementById('apply-body').innerHTML = queue.map(j => `
+    <tr>
+      <td>${j.title}</td><td>${j.company}</td>
+      <td style="color:var(--accent)">${j.apply_email}</td>
+      <td style="font-weight:600;color:var(--green)">${j.ai_score}</td>
+      <td style="color:var(--muted);font-size:12px">${j.ai_reason||''}</td>
+      <td><button class="btn btn-success btn-sm" onclick="applyJob(${j.id})">Send</button></td>
+    </tr>
+  `).join('') || '<tr><td colspan="6" class="loading">No jobs in auto-apply queue.</td></tr>';
+}
+
+async function runAutoApply() {
+  const r = await fetch(API + '/api/jobs?limit=200');
+  const jobs = await r.json();
+  const queue = jobs.filter(j => j.ai_decision === 'AUTO_APPLY' && j.apply_email && j.status !== 'applied');
+  if (!queue.length) { alert('No auto-apply candidates right now.'); return; }
+  if (!confirm(`Apply to ${queue.length} jobs automatically?`)) return;
+  let done = 0;
+  for (const j of queue) {
+    const res = await fetch(API + `/api/jobs/${j.id}/apply`, { method: 'POST' });
+    const data = await res.json();
+    if (data.sent) done++;
+  }
+  alert(`Done! Sent ${done} applications.`);
+  loadApplyQueue();
+}
+
+async function applyJob(id) {
+  if (!confirm('Send application for this job?')) return;
+  const r = await fetch(API + `/api/jobs/${id}/apply`, { method: 'POST' });
+  const d = await r.json();
+  alert(d.sent ? '✅ Application sent!' : '❌ Failed: ' + d.error);
+  loadJobs();
+}
+
+async function rejectJob(id) {
+  await fetch(API + `/api/jobs/${id}/reject`, { method: 'POST' });
+  loadJobs();
+}
+
+// ── Inbox ─────────────────────────────────────────────────
+async function loadInbox() {
+  const r = await fetch(API + '/api/inbox');
+  const items = await r.json();
+  const catColor = { interview:'green', assessment:'yellow', rejected:'red', followup:'blue', other:'gray' };
+  document.getElementById('inbox-list').innerHTML = items.map(i => `
+    <div class="inbox-item">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <strong>${i.subject}</strong>
+        <span class="badge badge-${catColor[i.category]||'gray'}">${i.category.toUpperCase()}</span>
+      </div>
+      <div class="meta">From: ${i.from_name} &lt;${i.from_email}&gt; · ${i.received_at}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:8px">${i.snippet?.substring(0,200)}...</div>
+    </div>
+  `).join('') || '<div class="loading">No responses yet.</div>';
+}
+
+async function scanInbox() {
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = 'Scanning...';
+  const r = await fetch(API + '/api/inbox/scan', { method: 'POST' });
+  const d = await r.json();
+  btn.disabled = false; btn.textContent = d.scanned ? `📧 Found ${d.scanned}` : '📧 Scan Inbox';
+  loadInbox();
+  loadStats();
+}
+
+// ── Worker Agent ──────────────────────────────────────────
+async function runTask() {
+  const desc = document.getElementById('task-input').value.trim();
+  const ctx = document.getElementById('task-context').value.trim();
+  if (!desc) { alert('Please describe the task.'); return; }
+  document.getElementById('task-result').innerHTML = '<div class="result-box">⏳ Working on it...</div>';
+  const r = await fetch(API + '/api/tasks/add', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ description: desc, context: ctx })
+  });
+  const { task_id } = await r.json();
+  const r2 = await fetch(API + `/api/tasks/${task_id}/run`, { method: 'POST' });
+  const result = await r2.json();
+  document.getElementById('task-result').innerHTML =
+    `<div class="result-box">${result.result || result.flags || 'No result returned.'}</div>`;
+}
+
+// ── Scrape ────────────────────────────────────────────────
+async function triggerScrape() {
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = '⏳ Scraping...';
+  await fetch(API + '/api/scrape', { method: 'POST' });
+  btn.textContent = '✅ Scraping in background...';
+  setTimeout(() => { btn.disabled = false; btn.textContent = '🔍 Scrape Jobs'; loadStats(); }, 10000);
+}
+
+// ── Manual Add ────────────────────────────────────────────
+async function addManualJob() {
+  const body = {
+    title: document.getElementById('m-title').value,
+    company: document.getElementById('m-company').value,
+    platform: document.getElementById('m-platform').value || 'Manual',
+    apply_email: document.getElementById('m-email').value,
+    url: document.getElementById('m-url').value,
+    description: document.getElementById('m-desc').value,
+  };
+  if (!body.title || !body.company || !body.description) {
+    alert('Title, Company, and Description are required.'); return;
+  }
+  document.getElementById('manual-result').innerHTML = '<div class="result-box">⏳ Adding and evaluating...</div>';
+  const r = await fetch(API + '/api/jobs/add', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const d = await r.json();
+  if (d.added) {
+    const r2 = await fetch(API + `/api/jobs/${d.job_id}/evaluate`, { method: 'POST' });
+    const ev = await r2.json();
+    const e = ev.evaluation;
+    document.getElementById('manual-result').innerHTML = `
+      <div class="result-box">
+✅ Job added (ID: ${d.job_id})
+Score: ${e.score}/100
+Scam: ${e.scam}
+Decision: ${e.decision}
+Reason: ${e.reason}
+      </div>`;
+  } else {
+    document.getElementById('manual-result').innerHTML = '<div class="result-box">⚠️ ' + d.message + '</div>';
+  }
+}
+
+// ── Job Detail Modal ──────────────────────────────────────
+async function showJobDetail(id) {
+  const r = await fetch(API + `/api/jobs/${id}`);
+  const j = await r.json();
+  document.getElementById('modal-title').textContent = j.title;
+  document.getElementById('modal-body').innerHTML = `
+    <p style="font-size:13px;color:var(--muted)">${j.company} · ${j.platform}</p>
+    <p style="margin:8px 0;font-size:13px"><strong>Apply email:</strong> ${j.apply_email || 'None found'}</p>
+    <p style="font-size:13px"><strong>AI Decision:</strong> ${j.ai_decision} (${j.ai_score}/100)</p>
+    <p style="font-size:12px;color:var(--muted);margin-top:4px">${j.ai_reason || ''}</p>
+    <hr style="border-color:var(--border);margin:12px 0">
+    <p style="font-size:13px;white-space:pre-wrap">${j.description?.substring(0,600) || 'No description'}...</p>
+    ${j.cover_letter ? `<hr style="border-color:var(--border);margin:12px 0"><p style="font-size:12px;font-weight:600;color:var(--muted)">COVER LETTER SENT:</p><p style="font-size:12px;white-space:pre-wrap">${j.cover_letter}</p>` : ''}
+    <div style="margin-top:16px;display:flex;gap:8px">
+      ${j.url ? `<a href="${j.url}" target="_blank" class="btn btn-primary btn-sm">View Post ↗</a>` : ''}
+      ${j.apply_email && j.status !== 'applied' ? `<button class="btn btn-success btn-sm" onclick="applyJob(${j.id});closeModal()">Apply Now</button>` : ''}
+    </div>
+  `;
+  document.getElementById('job-modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('job-modal').classList.remove('open');
+}
+
+// ── Init ──────────────────────────────────────────────────
+loadStats();
+</script>
+</body>
+</html>

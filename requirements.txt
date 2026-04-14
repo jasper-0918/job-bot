@@ -1,0 +1,16 @@
+anthropic>=0.40.0
+playwright>=1.44.0
+playwright-stealth>=1.0.6
+fake-useragent>=1.5.1
+beautifulsoup4>=4.12.0
+requests>=2.31.0
+fastapi>=0.111.0
+uvicorn>=0.30.0
+python-dotenv>=1.0.1
+PyYAML>=6.0.1
+google-auth>=2.30.0
+google-auth-oauthlib>=1.2.0
+google-api-python-client>=2.130.0
+schedule>=1.2.1
+rich>=13.7.1
+lxml>=5.2.1
