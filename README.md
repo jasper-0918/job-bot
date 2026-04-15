@@ -223,7 +223,7 @@ If you have **repetitive tasks or workflows that need automation**, I can build 
 I specialize in Python automation for businesses — job pipelines, document processing, inbox management, and more.
 
 👉 **[Connect on LinkedIn](https://www.linkedin.com/in/jasper-john-paitan-11641337b)**
-📧 **jasperjohn.paitan@lsu.edu.ph**
+📧 **jasper.paitan0918@gmail.com**
 🏅 **[View my certifications on Credly](https://www.credly.com/users/jasper-john-paitan)**
 
 ---
